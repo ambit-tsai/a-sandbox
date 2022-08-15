@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "target": "ES5",
+        "module": "ESNext",
+        "moduleResolution": "Node",
+        "strict": true,
+        "importHelpers": true,
+        "skipLibCheck": true,
+        "sourceMap": true
+    },
+    "include": ["src/**/*"]
+}
