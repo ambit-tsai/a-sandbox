@@ -136,7 +136,8 @@ export function wrapError(reason: any, realm: Realm) {
             return new (Global[name as 'Error'] || Error)(message);
         }
     }
-    return 'Error from sandbox: ' + toString(reason);
+    console.error(reason);
+    return new Error('unexpected error from sandbox');
 }
 
 /**
@@ -236,9 +237,19 @@ export const globalReservedProps = [
     'Math',
     'Reflect',
 
-    // Others
+    // Web API
     'atob',
     'btoa',
     'console',
     'window',
+    'Blob',
+    'File',
+    'FileReader',
+    'FormData',
+    'ReadableStream',
+    'TextDecoder',
+    'TextDecoderStream',
+    'TextEncoder',
+    'TextEncoderStream',
+    'URLSearchParams',
 ];
