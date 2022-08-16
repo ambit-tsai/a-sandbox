@@ -25,6 +25,6 @@ export default {
             targets: ['dist'],
         }),
         typescript(),
-        terser(),
+        // terser(),
     ],
 };
