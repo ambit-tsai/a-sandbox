@@ -19,14 +19,12 @@ export interface Realm {
     intrinsics: GlobalObject;
     globalObject: GlobalObject;
     evalInContext: Function;
-    // getWinProp(name: string): any;
 }
 
 function createRealmInContext(utils: Utils) {
     const win = window as GlobalObject;
     const { Error, EventTarget, Function: RawFunction, Object, Symbol } = win;
     const { getOwnPropertyNames } = Object;
-    const descriptors: Record<string, PropertyDescriptor> = {};
     const intrinsics = {} as GlobalObject;
     const globalObject = {} as GlobalObject;
     const evalInContext = RawFunction('with(this)return eval(arguments[0])');
@@ -43,15 +41,6 @@ function createRealmInContext(utils: Utils) {
         intrinsics,
         globalObject,
         evalInContext,
-        // getWinProp(name: string) {
-        //     const desc = descriptors[name];
-        //     if (desc) {
-        //         return desc.get
-        //             ? apply(desc.get, UNDEFINED, [win])
-        //             : desc.value;
-        //     }
-        //     throw new Error('connot find "' + name + '" in context');
-        // },
     };
 
     if (Symbol && Symbol.unscopables) {
@@ -105,12 +94,12 @@ function createRealmInContext(utils: Utils) {
             get() {
                 if (isInnerCall) {
                     isInnerCall = false;
-                    return intrinsics.eval; // used by safe eval
+                    return intrinsics.eval; // return raw `eval`
                 }
                 return safeEval;
             },
             set(val) {
-                isInnerCall = val === intrinsics;
+                isInnerCall = val === utils.PRIVATE_KEY;
             },
         });
     }
@@ -123,11 +112,11 @@ function createRealmInContext(utils: Utils) {
                 x =
                     '"use strict";undefined;' +
                     replace(x, dynamicImportPattern, dynamicImportReplacer);
-                // @ts-ignore: `realm` is the key to use raw `eval`
-                globalObject.eval = intrinsics;
+                // @ts-ignore: to use raw `eval`
+                globalObject.eval = utils.PRIVATE_KEY;
                 return apply(evalInContext, globalObject, [x]);
             },
-        }.eval; // fix: TS1215: Invalid use of 'eval'
+        }.eval; // fix TS1215: Invalid use of 'eval'
     }
 
     function createSafeFunction(): FunctionConstructor {
