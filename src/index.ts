@@ -1,7 +1,5 @@
 import { createRealm, Realm } from './realm';
-import { getWrappedValue, wrapError } from './helpers';
-
-const KEY = {};
+import { define, getWrappedValue, PRIVATE_KEY, wrapError } from './helpers';
 
 export class Sandbox {
     // @ts-ignore
@@ -9,23 +7,24 @@ export class Sandbox {
 
     constructor(options: Record<string, any>) {
         const realm = createRealm();
-        Object.defineProperty(this, '_getRealm', {
+        define(this, '_getRealm', {
             configurable: false,
             writable: false,
             value(key: unknown) {
-                if (key === KEY) return realm;
+                if (key === PRIVATE_KEY) return realm;
             },
         });
     }
 
     /**
-     * Return value must be Primitive | Callable | Promise<Primitive | Callable>
+     * Eval code in sandbox.
+     * @return primitive, callable or structured data
      */
-    evaluate(sourceText: string) {
+    evaluate<T>(sourceText: string): T {
         if (typeof sourceText !== 'string') {
             throw new TypeError('evaluate expects a string');
         }
-        const realm = this._getRealm(KEY);
+        const realm = this._getRealm(PRIVATE_KEY);
         try {
             const result = realm.globalObject.eval(sourceText);
             return getWrappedValue(result, realm);
@@ -35,6 +34,6 @@ export class Sandbox {
     }
 
     importValue(code: string) {
-        const realm = this._getRealm(KEY);
+        const realm = this._getRealm(PRIVATE_KEY);
     }
 }

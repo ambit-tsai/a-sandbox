@@ -1,25 +1,16 @@
-import { Realm } from './realm';
+import type { Realm } from './realm';
 
 export type GlobalObject = Omit<typeof window, 'globalThis'> & {
     globalThis: GlobalObject;
+    AudioData: new () => unknown;
+    VideoFrame: new () => unknown;
+    OffscreenCanvas: new () => unknown;
 };
 
 export const Global: GlobalObject = window as any;
 export const define = Object.defineProperty;
-export const _ = { debug: false };
-
-const { log: rawLog, warn } = console;
-
-export function log(msg: any) {
-    if (_.debug) {
-        rawLog('[DEBUG]');
-        if (isObject(msg)) {
-            warn(msg);
-        } else {
-            rawLog(msg);
-        }
-    }
-}
+export const PRIVATE_KEY = {};
+const UNIQUE_PROP = Global.Symbol ? Global.Symbol('Sandbox') : '__SANDBOX__';
 
 /**
  * Syntax: import("module-name") => __import("module-name")
@@ -27,15 +18,11 @@ export function log(msg: any) {
 export const dynamicImportPattern = /(^|[^.$])(\bimport\s*(\(|\/[/*]))/g;
 export const dynamicImportReplacer = '$1__$2';
 
-export let apply: typeof Reflect['apply'];
-if (Global.Reflect) {
-    apply = Reflect.apply;
-} else {
-    const applyOfFunction = Function.prototype.apply;
-    apply = function (target: Function, ctx: any, args: ArrayLike<any>) {
-        return applyOfFunction.call(target, ctx, args);
-    };
-}
+export const apply = Global.Reflect
+    ? Reflect.apply
+    : function (target: Function, ctx: any, args: ArrayLike<any>) {
+          return Function.prototype.apply.call(target, ctx, args);
+      };
 
 const replaceOfString = String.prototype.replace;
 
@@ -69,8 +56,8 @@ export function isObject(val: any): val is Record<PropertyKey, any> {
 //     };
 // }
 
-export function toString(val: any) {
-    return Object.prototype.toString.call(val);
+function hasOwn(o: object, v: PropertyKey): boolean {
+    return Object.prototype.hasOwnProperty.call(o, v);
 }
 
 const primitiveTypes = [
@@ -88,33 +75,102 @@ export function getWrappedValue(value: any, realm: Realm): any {
         return value;
     }
     if (type === 'function') {
-        return createWrappedFunction(value);
+        if (hasOwn(value, UNIQUE_PROP)) {
+            const [valRealm, rawFn] = value[UNIQUE_PROP];
+            if (valRealm === realm) {
+                return rawFn;
+            }
+        }
+        throw new Error('xxx');
+        // return createWrappedFunction(value);
     }
     if (type === 'object') {
-        if (!value) {
-            return value; // => null
+        if (value === null) {
+            return value;
         }
-        // if (value instanceof realm.intrinsics.Promise) {
-        //     return Promise.resolve(value).then(
-        //         (val) => getWrappedValue(val, realm),
-        //         wrapError
-        //     ); // TODO:
-        // }
+        const { intrinsics } = realm;
+        if (value instanceof intrinsics.Promise) {
+            return Promise.resolve(value).then(
+                (val) => getWrappedValue(val, realm),
+                (reason) => {
+                    throw wrapError(reason, realm);
+                }
+            );
+        }
+        if (typeof Global.structuredClone) {
+            if (
+                value instanceof intrinsics.ArrayBuffer ||
+                value instanceof intrinsics.MessagePort ||
+                value instanceof intrinsics.ReadableStream ||
+                value instanceof intrinsics.WritableStream ||
+                value instanceof intrinsics.TransformStream ||
+                value instanceof intrinsics.AudioData ||
+                value instanceof intrinsics.VideoFrame ||
+                value instanceof intrinsics.OffscreenCanvas
+            ) {
+                return structuredClone(value, { transfer: [value as any] });
+            }
+            if (
+                value instanceof intrinsics.DataView ||
+                value instanceof Object.getPrototypeOf(intrinsics.Int8Array)
+            ) {
+                return structuredClone(value, { transfer: [value.buffer] });
+            }
+            return structuredClone(value);
+        }
+        return JSON.parse(JSON.stringify(value));
     }
-    throw new TypeError('expect primitive or callable, got ' + toString(value));
+    console.error(value);
+    throw new TypeError('unexpected type of value');
 }
 
-function createWrappedFunction(fn: Function) {
-    return function () {
-        const args = arguments;
-        const wrappedArgs: any[] = [];
-        for (let i = 0, { length } = args; i < length; ++i) {
-            const wrappedValue = getWrappedValue(args[i]);
-            wrappedArgs.push(wrappedValue);
-        }
-        const result = apply(fn, targetRealm.globalObject, wrappedArgs);
-    };
-    // fn.length
+function createWrappedFunction(fn: Function, realm: Realm) {
+    const wrappedFn = realm.intrinsics.Function(
+        'params',
+        'return ' + wrappedFunctionInContext.toString()
+    )(arguments);
+    define(wrappedFn, UNIQUE_PROP, {
+        value(key: unknown) {
+            if (key === PRIVATE_KEY) return [realm, fn];
+        },
+    });
+    return wrappedFn;
+}
+
+/**
+ * Isolated function
+ */
+function wrappedFunctionInContext() {
+    //     // @ts-ignore: `params` is in parent scope
+    //     const [callerRealm, targetFunction, targetRealm, utils] = params as [
+    //         RealmRecord,
+    //         Function,
+    //         RealmRecord,
+    //         Utils
+    //     ];
+    //     const { getWrappedValue } = utils;
+    //     let result;
+    //     try {
+    //         const args = arguments;
+    //         const wrappedArgs: any[] = [];
+    //         for (let i = 0, { length } = args; i < length; ++i) {
+    //             const wrappedValue = getWrappedValue(
+    //                 targetRealm,
+    //                 args[i],
+    //                 callerRealm,
+    //                 utils
+    //             );
+    //             wrappedArgs.push(wrappedValue);
+    //         }
+    //         result = utils.apply(
+    //             targetFunction,
+    //             targetRealm.globalObject,
+    //             wrappedArgs
+    //         );
+    //     } catch (error) {
+    //         throw utils.wrapError(error, callerRealm);
+    //     }
+    //     return getWrappedValue(callerRealm, result, targetRealm, utils);
 }
 
 export function wrapError(reason: any, realm: Realm) {
@@ -139,42 +195,6 @@ export function wrapError(reason: any, realm: Realm) {
     console.error(reason);
     return new Error('unexpected error from sandbox');
 }
-
-/**
- * Isolated function
- */
-// function wrappedFunctionInContext() {
-//     // @ts-ignore: `params` is in parent scope
-//     const [callerRealm, targetFunction, targetRealm, utils] = params as [
-//         RealmRecord,
-//         Function,
-//         RealmRecord,
-//         Utils
-//     ];
-//     const { getWrappedValue } = utils;
-//     let result;
-//     try {
-//         const args = arguments;
-//         const wrappedArgs: any[] = [];
-//         for (let i = 0, { length } = args; i < length; ++i) {
-//             const wrappedValue = getWrappedValue(
-//                 targetRealm,
-//                 args[i],
-//                 callerRealm,
-//                 utils
-//             );
-//             wrappedArgs.push(wrappedValue);
-//         }
-//         result = utils.apply(
-//             targetFunction,
-//             targetRealm.globalObject,
-//             wrappedArgs
-//         );
-//     } catch (error) {
-//         throw utils.wrapError(error, callerRealm);
-//     }
-//     return getWrappedValue(callerRealm, result, targetRealm, utils);
-// }
 
 export const globalReservedProps = [
     // The global properties of ECMAScript 2022
@@ -241,6 +261,7 @@ export const globalReservedProps = [
     'atob',
     'btoa',
     'console',
+    'structuredClone',
     'window',
     'Blob',
     'File',
@@ -252,4 +273,5 @@ export const globalReservedProps = [
     'TextEncoder',
     'TextEncoderStream',
     'URLSearchParams',
+    'WritableStream',
 ];
