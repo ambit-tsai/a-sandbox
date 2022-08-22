@@ -10,7 +10,6 @@ export type GlobalObject = Omit<typeof window, 'globalThis'> & {
 export const Global: GlobalObject = window as any;
 export const define = Object.defineProperty;
 export const PRIVATE_KEY = {};
-const UNIQUE_PROP = Global.Symbol ? Global.Symbol('Sandbox') : '__SANDBOX__';
 
 /**
  * Syntax: import("module-name") => __import("module-name")
@@ -56,8 +55,8 @@ export function isObject(val: any): val is Record<PropertyKey, any> {
 //     };
 // }
 
-function hasOwn(o: object, v: PropertyKey): boolean {
-    return Object.prototype.hasOwnProperty.call(o, v);
+function instanceOf(value: any, Ctor: any) {
+    return typeof Ctor === 'function' && value instanceof Ctor;
 }
 
 const primitiveTypes = [
@@ -69,131 +68,107 @@ const primitiveTypes = [
     'bigint',
 ];
 
-export function getWrappedValue(value: any, realm: Realm): any {
+export function getWrappedValue(
+    value: any,
+    valueRealm: Realm,
+    targetRealm: Realm
+): any {
     const type = typeof value;
     if (primitiveTypes.indexOf(type) !== -1) {
         return value;
     }
+    const tGlobal = targetRealm.intrinsics;
     if (type === 'function') {
-        if (hasOwn(value, UNIQUE_PROP)) {
-            const [valRealm, rawFn] = value[UNIQUE_PROP];
-            if (valRealm === realm) {
-                return rawFn;
-            }
-        }
-        throw new Error('xxx');
-        // return createWrappedFunction(value);
+        return createWrappedFunction(value, valueRealm, targetRealm);
     }
     if (type === 'object') {
         if (value === null) {
             return value;
         }
-        const { intrinsics } = realm;
-        if (value instanceof intrinsics.Promise) {
-            return Promise.resolve(value).then(
-                (val) => getWrappedValue(val, realm),
+        const vGlobal = valueRealm.intrinsics;
+        if (vGlobal.Promise && value instanceof vGlobal.Promise) {
+            return tGlobal.Promise.resolve(value).then(
+                (val) => getWrappedValue(val, valueRealm, targetRealm),
                 (reason) => {
-                    throw wrapError(reason, realm);
+                    throw wrapError(reason, valueRealm, targetRealm);
                 }
             );
         }
-        if (typeof Global.structuredClone) {
+        const { structuredClone } = tGlobal;
+        if (structuredClone) {
             if (
-                value instanceof intrinsics.ArrayBuffer ||
-                value instanceof intrinsics.MessagePort ||
-                value instanceof intrinsics.ReadableStream ||
-                value instanceof intrinsics.WritableStream ||
-                value instanceof intrinsics.TransformStream ||
-                value instanceof intrinsics.AudioData ||
-                value instanceof intrinsics.VideoFrame ||
-                value instanceof intrinsics.OffscreenCanvas
+                instanceOf(value, vGlobal.ArrayBuffer) ||
+                instanceOf(value, vGlobal.MessagePort) ||
+                instanceOf(value, vGlobal.ReadableStream) ||
+                instanceOf(value, vGlobal.WritableStream) ||
+                instanceOf(value, vGlobal.TransformStream) ||
+                instanceOf(value, vGlobal.AudioData) ||
+                instanceOf(value, vGlobal.VideoFrame) ||
+                instanceOf(value, vGlobal.OffscreenCanvas)
             ) {
                 return structuredClone(value, { transfer: [value as any] });
             }
             if (
-                value instanceof intrinsics.DataView ||
-                value instanceof Object.getPrototypeOf(intrinsics.Int8Array)
+                instanceOf(value, vGlobal.DataView) ||
+                (vGlobal.Int8Array &&
+                    instanceOf(value, Object.getPrototypeOf(vGlobal.Int8Array)))
             ) {
                 return structuredClone(value, { transfer: [value.buffer] });
             }
             return structuredClone(value);
         }
-        return JSON.parse(JSON.stringify(value));
+        return tGlobal.JSON.parse(tGlobal.JSON.stringify(value));
     }
     console.error(value);
-    throw new TypeError('unexpected type of value');
+    throw new tGlobal.TypeError('unexpected type of value');
 }
 
-function createWrappedFunction(fn: Function, realm: Realm) {
-    const wrappedFn = realm.intrinsics.Function(
-        'params',
-        'return ' + wrappedFunctionInContext.toString()
-    )(arguments);
-    define(wrappedFn, UNIQUE_PROP, {
-        value(key: unknown) {
-            if (key === PRIVATE_KEY) return [realm, fn];
-        },
+function createWrappedFunction(
+    fn: Function,
+    valueRealm: Realm,
+    targetRealm: Realm
+) {
+    const getWrappedFn = targetRealm.intrinsics.Function(
+        'cb',
+        'return function(){return cb(arguments)}'
+    );
+    return getWrappedFn((args: IArguments) => {
+        const wrappedArgs: any[] = [];
+        for (let i = 0, { length } = args; i < length; ++i) {
+            const wrappedValue = getWrappedValue(
+                args[i],
+                targetRealm,
+                valueRealm
+            );
+            wrappedArgs.push(wrappedValue);
+        }
+        return apply(fn, null, args);
     });
-    return wrappedFn;
 }
 
-/**
- * Isolated function
- */
-function wrappedFunctionInContext() {
-    //     // @ts-ignore: `params` is in parent scope
-    //     const [callerRealm, targetFunction, targetRealm, utils] = params as [
-    //         RealmRecord,
-    //         Function,
-    //         RealmRecord,
-    //         Utils
-    //     ];
-    //     const { getWrappedValue } = utils;
-    //     let result;
-    //     try {
-    //         const args = arguments;
-    //         const wrappedArgs: any[] = [];
-    //         for (let i = 0, { length } = args; i < length; ++i) {
-    //             const wrappedValue = getWrappedValue(
-    //                 targetRealm,
-    //                 args[i],
-    //                 callerRealm,
-    //                 utils
-    //             );
-    //             wrappedArgs.push(wrappedValue);
-    //         }
-    //         result = utils.apply(
-    //             targetFunction,
-    //             targetRealm.globalObject,
-    //             wrappedArgs
-    //         );
-    //     } catch (error) {
-    //         throw utils.wrapError(error, callerRealm);
-    //     }
-    //     return getWrappedValue(callerRealm, result, targetRealm, utils);
-}
-
-export function wrapError(reason: any, realm: Realm) {
+export function wrapError(reason: any, valueRealm: Realm, targetRealm: Realm) {
     const type = typeof reason;
     if (primitiveTypes.indexOf(type) !== -1) {
         return reason;
     }
+    const vGlobal = valueRealm.intrinsics;
+    const tGlobal = targetRealm.intrinsics;
     if (type === 'object') {
-        if (!reason || reason instanceof Object) {
+        if (!reason || reason instanceof vGlobal.Object) {
             return reason;
         }
         const { name, message } = reason;
         if (
-            reason instanceof realm.intrinsics.Error &&
+            reason instanceof vGlobal.Error &&
             typeof name === 'string' &&
             /Error$/.test(name) &&
             typeof message === 'string'
         ) {
-            return new (Global[name as 'Error'] || Error)(message);
+            return new (tGlobal[name as 'Error'] || tGlobal.Error)(message);
         }
     }
     console.error(reason);
-    return new Error('unexpected error from sandbox');
+    return new tGlobal.Error('unexpected error from sandbox');
 }
 
 export const globalReservedProps = [

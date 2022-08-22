@@ -5,6 +5,7 @@
         "moduleResolution": "Node",
         "strict": true,
         "importHelpers": true,
+        "lib": ["ESNext", "ScriptHost", "DOM"],
         "skipLibCheck": true,
         "sourceMap": true
     },
