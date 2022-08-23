@@ -7,7 +7,7 @@ import {
     wrapError,
 } from './helpers';
 
-export class Sandbox {
+export default class Sandbox {
     // @ts-ignore
     _getRealm: (key: unknown) => Realm;
 
@@ -24,7 +24,7 @@ export class Sandbox {
      * Eval code in sandbox.
      * @return primitive, callable or structured data
      */
-    evaluate<T>(sourceText: string): T {
+    evaluate(sourceText: string): any {
         if (typeof sourceText !== 'string') {
             throw new TypeError('evaluate expects a string');
         }

@@ -142,7 +142,12 @@ function createWrappedFunction(
             );
             wrappedArgs.push(wrappedValue);
         }
-        return apply(fn, null, args);
+        try {
+            const result = apply(fn, null, args);
+            return getWrappedValue(result, valueRealm, targetRealm);
+        } catch (error) {
+            throw wrapError(error, valueRealm, targetRealm);
+        }
     });
 }
 
@@ -154,7 +159,7 @@ export function wrapError(reason: any, valueRealm: Realm, targetRealm: Realm) {
     const vGlobal = valueRealm.intrinsics;
     const tGlobal = targetRealm.intrinsics;
     if (type === 'object') {
-        if (!reason || reason instanceof vGlobal.Object) {
+        if (!reason || reason instanceof tGlobal.Object) {
             return reason;
         }
         const { name, message } = reason;
@@ -232,7 +237,7 @@ export const globalReservedProps = [
     'Math',
     'Reflect',
 
-    // Web API
+    // Host API
     'atob',
     'btoa',
     'console',
@@ -247,6 +252,7 @@ export const globalReservedProps = [
     'TextDecoderStream',
     'TextEncoder',
     'TextEncoderStream',
+    'TransformStream',
     'URLSearchParams',
     'WritableStream',
 ];

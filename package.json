@@ -8,9 +8,11 @@
         "email": "ambit_tsai@qq.com"
     },
     "main": "dist/index.js",
+    "module": "dist/index.mjs",
     "scripts": {
         "build": "rollup -c",
-        "start": "vite -c docs-src/vite.config.ts"
+        "start": "vite -c docs-src/vite.config.ts",
+        "test": "jasmine-browser-runner serve --config=jasmine-browser.json"
     },
     "repository": {
         "type": "git",
@@ -25,6 +27,8 @@
     "devDependencies": {
         "@rollup/plugin-typescript": "^8.3.4",
         "@types/node": "^18.6.3",
+        "jasmine-browser-runner": "^1.1.0",
+        "jasmine-core": "^4.3.0",
         "rollup": "~2.70.2",
         "rollup-plugin-clear": "2.0.7",
         "rollup-plugin-terser": "^7.0.2",
