@@ -48,7 +48,7 @@ describe('Method "evaluate"', () => {
         }).toThrowError(TypeError);
     });
 
-    it('pass invalid code', () => {
+    it('invalid code string', () => {
         expect(() => {
             sandbox.evaluate('}{');
         }).toThrowError(SyntaxError);

@@ -25,7 +25,7 @@ describe('Method "evaluate" allows callable data', () => {
         try {
             const fn = sandbox.evaluate('() => {throw new Error("hello")}');
             fn();
-            expect(() => {}).toThrow();
+            throw 'never';
         } catch (error) {
             expect(error instanceof Error).toBe(true);
             expect(error.message).toBe('hello');

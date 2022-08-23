@@ -16,7 +16,7 @@ describe('Method "evaluate" throw errors', () => {
     it('error from sandbox', () => {
         try {
             sandbox.evaluate('throw new Error("hello")');
-            expect(() => {}).toThrow();
+            throw 'never';
         } catch (error) {
             expect(error instanceof Error).toBe(true);
             expect(error.message).toBe('hello');
