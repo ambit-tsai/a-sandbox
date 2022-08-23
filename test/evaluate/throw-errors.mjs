@@ -1,12 +1,6 @@
 describe('Method "evaluate" throw errors', () => {
     const sandbox = new Sandbox();
 
-    it('return unsupported data', () => {
-        expect(() => {
-            sandbox.evaluate('new FormData()');
-        }).toThrowError(Error);
-    });
-
     it('non-existent variable', () => {
         expect(() => {
             sandbox.evaluate('__NonExistent__');
@@ -16,10 +10,26 @@ describe('Method "evaluate" throw errors', () => {
     it('error from sandbox', () => {
         try {
             sandbox.evaluate('throw new Error("hello")');
-            throw 'never';
         } catch (error) {
-            expect(error instanceof Error).toBe(true);
+            expect(error instanceof Error).toBeTruthy();
             expect(error.message).toBe('hello');
+            return;
         }
+        throw 'never';
+    });
+
+    it('custom error from sandbox', () => {
+        try {
+            const fn = sandbox.evaluate(`
+                class CustomError extends Error {};
+                () => { throw new CustomError("hello") };
+            `);
+            fn();
+        } catch (error) {
+            expect(error instanceof Error).toBeTruthy();
+            expect(error.message).toBe('hello');
+            return;
+        }
+        throw 'never';
     });
 });

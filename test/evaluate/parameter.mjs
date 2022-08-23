@@ -1,48 +1,48 @@
-describe('Method "evaluate"', () => {
+describe('Method "evaluate" parameter', () => {
     const sandbox = new Sandbox();
 
-    it('string as parameter', () => {
+    it('string', () => {
         const result = sandbox.evaluate('123');
         expect(result).toBe(123);
     });
 
-    it('boolean as parameter', () => {
+    it('boolean', () => {
         expect(() => {
             sandbox.evaluate(true);
         }).toThrowError(TypeError);
     });
 
-    it('number as parameter', () => {
+    it('number', () => {
         expect(() => {
             sandbox.evaluate(123);
         }).toThrowError(TypeError);
     });
 
-    it('bigint as parameter', () => {
+    it('bigint', () => {
         expect(() => {
             sandbox.evaluate(123n);
         }).toThrowError(TypeError);
     });
 
-    it('symbol as parameter', () => {
+    it('symbol', () => {
         expect(() => {
             sandbox.evaluate(Symbol());
         }).toThrowError(TypeError);
     });
 
-    it('null as parameter', () => {
+    it('null', () => {
         expect(() => {
             sandbox.evaluate(null);
         }).toThrowError(TypeError);
     });
 
-    it('undefined as parameter', () => {
+    it('undefined', () => {
         expect(() => {
             sandbox.evaluate();
         }).toThrowError(TypeError);
     });
 
-    it('object as parameter', () => {
+    it('object', () => {
         expect(() => {
             sandbox.evaluate({});
         }).toThrowError(TypeError);

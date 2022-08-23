@@ -1,4 +1,4 @@
-describe('Method "evaluate" allows primitive data', () => {
+describe('Method "evaluate" returns primitive data', () => {
     const sandbox = new Sandbox();
 
     it('return string', () => {
