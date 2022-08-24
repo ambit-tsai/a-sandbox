@@ -25,7 +25,6 @@ describe('Class "Sandbox"', () => {
             const list = [];
             for (const [key, desc] of Object.entries(descMap)) {
                 if (
-                    !(desc instanceof Object) ||
                     (desc.get && !(desc.get instanceof Object)) ||
                     (desc.set && !(desc.set instanceof Object)) ||
                     (desc.value &&

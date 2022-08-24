@@ -20,8 +20,7 @@ describe('Method "evaluate" returns callable data', () => {
     });
 
     it('wrapped function returns primitive data', () => {
-        let fn;
-        fn = sandbox.evaluate('() => 123');
+        let fn = sandbox.evaluate('() => 123');
         expect(fn()).toBe(123);
         fn = sandbox.evaluate('() => 123n');
         expect(fn()).toBe(123n);
@@ -40,35 +39,34 @@ describe('Method "evaluate" returns callable data', () => {
     });
 
     it('wrapped function returns ArrayBuffer', () => {
-        const result = sandbox.evaluate('new ArrayBuffer(8)');
+        const result = sandbox.evaluate('() => new ArrayBuffer(8)')();
         expect(result instanceof ArrayBuffer).toBeTruthy();
         expect(result.byteLength).toBe(8);
     });
 
     it('wrapped function returns DataView', () => {
-        const result = sandbox.evaluate(`
-            const buffer = new ArrayBuffer(8);
-            new DataView(buffer);
-        `);
+        const result = sandbox.evaluate(
+            `() => new DataView(new ArrayBuffer(8))`
+        )();
         expect(result instanceof DataView).toBeTruthy();
         expect(result.byteLength).toBe(8);
     });
 
     it('wrapped function return TypedArray', () => {
-        const result = sandbox.evaluate('new Uint8Array(8)');
+        const result = sandbox.evaluate('() => new Uint8Array(8)')();
         expect(result instanceof Uint8Array).toBeTruthy();
         expect(result.byteLength).toBe(8);
     });
 
     it('wrapped function return plain object', () => {
-        const result = sandbox.evaluate('({ a: 123 })');
+        const result = sandbox.evaluate('() => ({ a: 123 })')();
         expect(result instanceof Object).toBeTruthy();
         expect(result.a).toBe(123);
     });
 
     it('wrapped function return unstructured data', () => {
         expect(() => {
-            sandbox.evaluate('new FormData()');
+            sandbox.evaluate('() => new FormData()')();
         }).toThrowError(Error);
     });
 
@@ -95,8 +93,7 @@ describe('Method "evaluate" returns callable data', () => {
 
         function check(source, expected, isSymbol = false) {
             try {
-                const fn = sandbox.evaluate(`() => {throw ${source}}`);
-                fn();
+                sandbox.evaluate(`() => { throw ${source} }`)();
             } catch (error) {
                 if (isSymbol) {
                     expect(typeof error).toBe('symbol');
@@ -123,5 +120,61 @@ describe('Method "evaluate" returns callable data', () => {
             return;
         }
         throw 'never';
+    });
+
+    it('pass primitive data to wrapped function', () => {
+        const fn = sandbox.evaluate(`v => typeof v`);
+        expect(fn(1)).toBe('number');
+        expect(fn(1n)).toBe('bigint');
+        expect(fn(true)).toBe('boolean');
+        expect(fn('')).toBe('string');
+        expect(fn(null)).toBe('object');
+        expect(fn()).toBe('undefined');
+        expect(fn(Symbol())).toBe('symbol');
+    });
+
+    it('pass ArrayBuffer to wrapped function', () => {
+        const fn = sandbox.evaluate(`v => v instanceof ArrayBuffer`);
+        const result = fn(new ArrayBuffer(8));
+        expect(result).toBeTruthy();
+    });
+
+    it('pass DataView to wrapped function', () => {
+        const fn = sandbox.evaluate(`v => v instanceof DataView`);
+        const result = fn(new DataView(new ArrayBuffer(8)));
+        expect(result).toBeTruthy();
+    });
+
+    it('pass TypedArray to wrapped function', () => {
+        const fn = sandbox.evaluate(`v => v instanceof Uint8Array`);
+        const result = fn(new Uint8Array(8));
+        expect(result).toBeTruthy();
+    });
+
+    it('pass plain object to wrapped function', () => {
+        const fn = sandbox.evaluate(`v => v instanceof Object`);
+        const result = fn({});
+        expect(result).toBeTruthy();
+    });
+
+    it('pass unstructured data to wrapped function', () => {
+        const fn = sandbox.evaluate(`() => {}`);
+        try {
+            fn(new FormData());
+        } catch (error) {
+            expect(error instanceof DOMException).toBeTruthy();
+            return;
+        }
+        throw 'never';
+    });
+
+    it('pass Promise<Primitive> to wrapped function', async () => {
+        const fn = sandbox.evaluate(`
+            async (v) => {
+                if (v instanceof Promise) return (await v) + 1;
+            }
+        `);
+        const result = fn(Promise.resolve(1));
+        expect(await result).toBe(2);
     });
 });

@@ -87,6 +87,7 @@ export function getWrappedValue(
         }
         const vGlobal = valueRealm.intrinsics;
         if (vGlobal.Promise && value instanceof vGlobal.Promise) {
+            // FIXME: resolve\then is not safe
             return tGlobal.Promise.resolve(value).then(
                 (val) => getWrappedValue(val, valueRealm, targetRealm),
                 (reason) => {
@@ -133,17 +134,17 @@ function createWrappedFunction(
         'return function(){return cb(arguments)}'
     );
     return getWrappedFn((args: IArguments) => {
-        const wrappedArgs: any[] = [];
-        for (let i = 0, { length } = args; i < length; ++i) {
-            const wrappedValue = getWrappedValue(
-                args[i],
-                targetRealm,
-                valueRealm
-            );
-            wrappedArgs.push(wrappedValue);
-        }
         try {
-            const result = apply(fn, null, args);
+            const wrappedArgs: any[] = []; //TODO:
+            for (let i = 0, { length } = args; i < length; ++i) {
+                const wrappedValue = getWrappedValue(
+                    args[i],
+                    targetRealm,
+                    valueRealm
+                );
+                wrappedArgs.push(wrappedValue);
+            }
+            const result = apply(fn, undefined, wrappedArgs);
             return getWrappedValue(result, valueRealm, targetRealm);
         } catch (error) {
             throw wrapError(error, valueRealm, targetRealm);
@@ -163,13 +164,17 @@ export function wrapError(reason: any, valueRealm: Realm, targetRealm: Realm) {
             return reason;
         }
         const { name, message } = reason;
-        if (
-            reason instanceof vGlobal.Error &&
-            typeof name === 'string' &&
-            /Error$/.test(name) &&
-            typeof message === 'string'
-        ) {
-            return new (tGlobal[name as 'Error'] || tGlobal.Error)(message);
+        if (typeof name === 'string' && typeof message === 'string') {
+            if (reason instanceof vGlobal.DOMException) {
+                return new tGlobal.DOMException(message, name);
+            }
+            if (
+                reason instanceof vGlobal.Error &&
+                /^[A-Z]/.test(name) &&
+                /Error$/.test(name)
+            ) {
+                return new (tGlobal[name as 'Error'] || tGlobal.Error)(message);
+            }
         }
     }
     console.error(reason);
