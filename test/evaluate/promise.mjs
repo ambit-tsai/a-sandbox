@@ -2,16 +2,16 @@ describe('Method "evaluate" returns Promise', () => {
     const sandbox = new Sandbox();
 
     it('Promise<Primitive>', async () => {
-        const exec = (code) => sandbox.evaluate(code);
-        const result = exec('Promise.resolve(Symbol())');
+        const resolve = (code) => sandbox.evaluate(`Promise.resolve(${code})`);
+        const result = resolve('Symbol()');
         expect(result).toBeInstanceOf(Promise);
         expect(typeof (await result)).toBe('symbol');
-        expect(await exec('Promise.resolve(123)')).toBe(123);
-        expect(await exec('Promise.resolve(123n)')).toBe(123n);
-        expect(await exec('Promise.resolve(true)')).toBe(true);
-        expect(await exec('Promise.resolve()')).toBe(undefined);
-        expect(await exec('Promise.resolve("hello")')).toBe('hello');
-        expect(await exec('Promise.resolve(null)')).toBe(null);
+        expect(await resolve('123')).toBe(123);
+        expect(await resolve('123n')).toBe(123n);
+        expect(await resolve('true')).toBe(true);
+        expect(await resolve('')).toBe(undefined);
+        expect(await resolve('"hello"')).toBe('hello');
+        expect(await resolve('null')).toBe(null);
     });
 
     it('Promise<ArrayBuffer>', async () => {
@@ -53,13 +53,12 @@ describe('Method "evaluate" returns Promise', () => {
     });
 
     it('rejected promise', async () => {
-        const result = sandbox.evaluate('Promise.reject(new Error("hello"))');
+        const result = sandbox.evaluate('Promise.reject(123)');
         expect(result).toBeInstanceOf(Promise);
         try {
             await result;
         } catch (error) {
-            expect(error).toBeInstanceOf(Error);
-            expect(error.message).toBe('hello');
+            expect(error).toBe(123);
             return;
         }
         throw 'never';
