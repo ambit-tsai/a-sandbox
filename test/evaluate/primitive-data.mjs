@@ -1,38 +1,38 @@
 describe('Method "evaluate" returns primitive data', () => {
     const sandbox = new Sandbox();
 
-    it('return string', () => {
+    it('string', () => {
         const result = sandbox.evaluate('"hello"');
         expect(result).toBe('hello');
     });
 
-    it('return number', () => {
+    it('number', () => {
         const result = sandbox.evaluate('123');
         expect(result).toBe(123);
     });
 
-    it('return symbol', () => {
+    it('symbol', () => {
         const result = sandbox.evaluate('Symbol("hello")');
         expect(typeof result).toBe('symbol');
         expect(result.toString()).toBe('Symbol(hello)');
     });
 
-    it('return boolean', () => {
+    it('boolean', () => {
         const result = sandbox.evaluate('true');
         expect(result).toBe(true);
     });
 
-    it('return bigint', () => {
+    it('bigint', () => {
         const result = sandbox.evaluate('123n');
         expect(result).toBe(123n);
     });
 
-    it('return undefined', () => {
+    it('undefined', () => {
         const result = sandbox.evaluate('');
         expect(result).toBeUndefined();
     });
 
-    it('return null', () => {
+    it('null', () => {
         const result = sandbox.evaluate('null');
         expect(result).toBeNull();
     });

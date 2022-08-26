@@ -11,7 +11,7 @@ describe('Method "evaluate" throw errors', () => {
         try {
             sandbox.evaluate('throw new Error("hello")');
         } catch (error) {
-            expect(error instanceof Error).toBeTruthy();
+            expect(error).toBeInstanceOf(Error);
             expect(error.message).toBe('hello');
             return;
         }
@@ -20,13 +20,12 @@ describe('Method "evaluate" throw errors', () => {
 
     it('custom error from sandbox', () => {
         try {
-            const fn = sandbox.evaluate(`
+            sandbox.evaluate(`
                 class CustomError extends Error {};
-                () => { throw new CustomError("hello") };
+                throw new CustomError("hello");
             `);
-            fn();
         } catch (error) {
-            expect(error instanceof Error).toBeTruthy();
+            expect(error).toBeInstanceOf(Error);
             expect(error.message).toBe('hello');
             return;
         }

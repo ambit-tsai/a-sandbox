@@ -1,15 +1,15 @@
 describe('Method "evaluate" returns structured data', () => {
     const sandbox = new Sandbox();
 
-    it('return ArrayBuffer', () => {
+    it('ArrayBuffer', () => {
         const result = sandbox.evaluate('globalThis.$ = new ArrayBuffer(8)');
-        expect(result instanceof ArrayBuffer).toBeTruthy();
+        expect(result).toBeInstanceOf(ArrayBuffer);
         expect(result.byteLength).toBe(8);
         expect(sandbox.evaluate('globalThis.$.byteLength')).toBe(0);
         sandbox.evaluate('delete globalThis.$');
     });
 
-    // it('return MessageChannel', () => {
+    // it('MessageChannel', () => {
     //     const result = sandbox.evaluate(`
     //         globalThis.$ = new MessageChannel();
     //         globalThis.$.port2;
@@ -18,25 +18,22 @@ describe('Method "evaluate" returns structured data', () => {
     //     sandbox.evaluate('delete globalThis.$');
     // });
 
-    it('return ReadableStream', () => {
-        const result = sandbox.evaluate('globalThis.$ = new ReadableStream()');
-        expect(result instanceof ReadableStream).toBeTruthy();
-        sandbox.evaluate('delete globalThis.$');
+    it('ReadableStream', () => {
+        const result = sandbox.evaluate('new ReadableStream()');
+        expect(result).toBeInstanceOf(ReadableStream);
     });
 
-    it('return WritableStream', () => {
-        const result = sandbox.evaluate('globalThis.$ = new WritableStream()');
-        expect(result instanceof WritableStream).toBeTruthy();
-        sandbox.evaluate('delete globalThis.$');
+    it('WritableStream', () => {
+        const result = sandbox.evaluate('new WritableStream()');
+        expect(result).toBeInstanceOf(WritableStream);
     });
 
-    it('return TransformStream', () => {
-        const result = sandbox.evaluate('globalThis.$ = new TransformStream()');
-        expect(result instanceof TransformStream).toBeTruthy();
-        sandbox.evaluate('delete globalThis.$');
+    it('TransformStream', () => {
+        const result = sandbox.evaluate('new TransformStream()');
+        expect(result).toBeInstanceOf(TransformStream);
     });
 
-    // it('return AudioData', () => {
+    // it('AudioData', () => {
     //     if (!globalThis.AudioData) {
     //         return;
     //     }
@@ -47,34 +44,33 @@ describe('Method "evaluate" returns structured data', () => {
     //     sandbox.evaluate('delete globalThis.$');
     // });
 
-    it('return DataView', () => {
+    it('DataView', () => {
         const result = sandbox.evaluate(`
-            const buffer = new ArrayBuffer(8);
-            globalThis.$ = new DataView(buffer);
+            globalThis.$ = new DataView(new ArrayBuffer(8));
         `);
-        expect(result instanceof DataView).toBeTruthy();
+        expect(result).toBeInstanceOf(DataView);
         expect(result.byteLength).toBe(8);
         expect(sandbox.evaluate('globalThis.$.buffer.byteLength')).toBe(0);
         sandbox.evaluate('delete globalThis.$');
     });
 
-    it('return TypedArray', () => {
+    it('TypedArray', () => {
         const result = sandbox.evaluate('globalThis.$ = new Uint8Array(8)');
-        expect(result instanceof Uint8Array).toBeTruthy();
+        expect(result).toBeInstanceOf(Uint8Array);
         expect(result.byteLength).toBe(8);
         expect(sandbox.evaluate('globalThis.$.byteLength')).toBe(0);
         sandbox.evaluate('delete globalThis.$');
     });
 
-    it('return plain object', () => {
+    it('plain object', () => {
         const result = sandbox.evaluate('({ a: 123 })');
-        expect(result instanceof Object).toBeTruthy();
+        expect(result).toBeInstanceOf(Object);
         expect(result.a).toBe(123);
     });
 
-    it('return unstructured data', () => {
+    it('unstructured data', () => {
         expect(() => {
-            sandbox.evaluate('new FormData()');
+            sandbox.evaluate('globalThis');
         }).toThrowError(Error);
     });
 });
