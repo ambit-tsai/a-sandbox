@@ -19,7 +19,7 @@ describe('Method "evaluate" returns callable data', () => {
         expect(await result).toBe(123);
     });
 
-    it('wrapped function returns primitive data', () => {
+    it('inner function returns primitive data', () => {
         const exec = (code) => sandbox.evaluate(`() => ${code}`)();
         expect(exec('123')).toBe(123);
         expect(exec('123n')).toBe(123n);
@@ -32,19 +32,19 @@ describe('Method "evaluate" returns callable data', () => {
         expect(result.toString()).toBe('Symbol(hello)');
     });
 
-    it('wrapped function returns function', () => {
+    it('inner function returns function', () => {
         const fn = sandbox.evaluate('() => ()=>123')();
         expect(fn).toBeInstanceOf(Function);
         expect(fn()).toBe(123);
     });
 
-    it('wrapped function returns ArrayBuffer', () => {
+    it('inner function returns ArrayBuffer', () => {
         const result = sandbox.evaluate('() => new ArrayBuffer(8)')();
         expect(result).toBeInstanceOf(ArrayBuffer);
         expect(result.byteLength).toBe(8);
     });
 
-    it('wrapped function returns DataView', () => {
+    it('inner function returns DataView', () => {
         const result = sandbox.evaluate(
             `() => new DataView(new ArrayBuffer(8))`
         )();
@@ -52,25 +52,25 @@ describe('Method "evaluate" returns callable data', () => {
         expect(result.byteLength).toBe(8);
     });
 
-    it('wrapped function returns TypedArray', () => {
+    it('inner function returns TypedArray', () => {
         const result = sandbox.evaluate('() => new Uint8Array(8)')();
         expect(result).toBeInstanceOf(Uint8Array);
         expect(result.byteLength).toBe(8);
     });
 
-    it('wrapped function returns plain object', () => {
+    it('inner function returns plain object', () => {
         const result = sandbox.evaluate('() => ({ a: 123 })')();
         expect(result).toBeInstanceOf(Object);
         expect(result.a).toBe(123);
     });
 
-    it('wrapped function returns unstructured data', () => {
+    it('inner function returns unstructured data', () => {
         expect(() => {
             sandbox.evaluate('() => globalThis')();
         }).toThrowError(Error);
     });
 
-    it('wrapped function throws error', () => {
+    it('inner function throws error', () => {
         try {
             sandbox.evaluate('() => { throw new Error("hello") }')();
         } catch (error) {
@@ -81,7 +81,7 @@ describe('Method "evaluate" returns callable data', () => {
         throw 'never';
     });
 
-    it('wrapped function throws custom error', () => {
+    it('inner function throws custom error', () => {
         try {
             sandbox.evaluate(`
                 class CustomError extends Error {};
@@ -95,7 +95,7 @@ describe('Method "evaluate" returns callable data', () => {
         throw 'never';
     });
 
-    it('wrapped function throws primitive data', () => {
+    it('inner function throws primitive data', () => {
         check('123', 123);
         check('123n', 123n);
         check('true', true);
@@ -120,13 +120,13 @@ describe('Method "evaluate" returns callable data', () => {
         }
     });
 
-    it('wrapped function returns Promise<Primitive>', async () => {
+    it('inner function returns Promise<Primitive>', async () => {
         const result = sandbox.evaluate('() => Promise.resolve(123)')();
         expect(result).toBeInstanceOf(Promise);
         expect(await result).toBe(123);
     });
 
-    it('wrapped function returns Promise<ArrayBuffer>', async () => {
+    it('inner function returns Promise<ArrayBuffer>', async () => {
         const result = sandbox.evaluate(
             '() => Promise.resolve(new ArrayBuffer(8))'
         )();
@@ -134,7 +134,7 @@ describe('Method "evaluate" returns callable data', () => {
         expect(await result).toBeInstanceOf(ArrayBuffer);
     });
 
-    it('wrapped function returns Promise<DataView>', async () => {
+    it('inner function returns Promise<DataView>', async () => {
         const result = sandbox.evaluate(
             `() => Promise.resolve(new DataView(new ArrayBuffer(8)))`
         )();
@@ -142,7 +142,7 @@ describe('Method "evaluate" returns callable data', () => {
         expect(await result).toBeInstanceOf(DataView);
     });
 
-    it('wrapped function returns Promise<TypedArray>', async () => {
+    it('inner function returns Promise<TypedArray>', async () => {
         const result = sandbox.evaluate(
             '() => Promise.resolve(new Uint8Array(8))'
         )();
@@ -150,13 +150,13 @@ describe('Method "evaluate" returns callable data', () => {
         expect(await result).toBeInstanceOf(Uint8Array);
     });
 
-    it('wrapped function returns Promise<PlainObject>', async () => {
+    it('inner function returns Promise<PlainObject>', async () => {
         const result = sandbox.evaluate('() => Promise.resolve({})')();
         expect(result).toBeInstanceOf(Promise);
         expect(await result).toBeInstanceOf(Object);
     });
 
-    it('wrapped function returns Promise<Unstructured>', async () => {
+    it('inner function returns Promise<Unstructured>', async () => {
         const result = sandbox.evaluate('() => Promise.resolve(globalThis)')();
         expect(result).toBeInstanceOf(Promise);
         try {
@@ -168,7 +168,7 @@ describe('Method "evaluate" returns callable data', () => {
         throw 'never';
     });
 
-    it('wrapped function returns rejected promise', async () => {
+    it('inner function returns rejected promise', async () => {
         const result = sandbox.evaluate('() => Promise.reject(1)')();
         expect(result).toBeInstanceOf(Promise);
         try {
@@ -180,7 +180,7 @@ describe('Method "evaluate" returns callable data', () => {
         throw 'never';
     });
 
-    it('pass primitive data to wrapped function', () => {
+    it('pass primitive data to inner function', () => {
         const check = sandbox.evaluate(`(v, type) => typeof v === type`);
         expect(check(1, 'number')).toBeTruthy();
         expect(check(1n, 'bigint')).toBeTruthy();
@@ -191,31 +191,31 @@ describe('Method "evaluate" returns callable data', () => {
         expect(check(Symbol(), 'symbol')).toBeTruthy();
     });
 
-    it('pass ArrayBuffer to wrapped function', () => {
+    it('pass ArrayBuffer to inner function', () => {
         const fn = sandbox.evaluate(`v => v instanceof ArrayBuffer`);
         const result = fn(new ArrayBuffer(8));
         expect(result).toBeTruthy();
     });
 
-    it('pass DataView to wrapped function', () => {
+    it('pass DataView to inner function', () => {
         const fn = sandbox.evaluate(`v => v instanceof DataView`);
         const result = fn(new DataView(new ArrayBuffer(8)));
         expect(result).toBeTruthy();
     });
 
-    it('pass TypedArray to wrapped function', () => {
+    it('pass TypedArray to inner function', () => {
         const fn = sandbox.evaluate(`v => v instanceof Uint8Array`);
         const result = fn(new Uint8Array(8));
         expect(result).toBeTruthy();
     });
 
-    it('pass plain object to wrapped function', () => {
+    it('pass plain object to inner function', () => {
         const fn = sandbox.evaluate(`v => v instanceof Object`);
         const result = fn({});
         expect(result).toBeTruthy();
     });
 
-    it('pass unstructured data to wrapped function', () => {
+    it('pass unstructured data to inner function', () => {
         const fn = sandbox.evaluate(`() => {}`);
         try {
             fn(globalThis);
@@ -226,7 +226,7 @@ describe('Method "evaluate" returns callable data', () => {
         throw 'never';
     });
 
-    it('pass Promise<Primitive> to wrapped function', async () => {
+    it('pass Promise<Primitive> to inner function', async () => {
         const fn = sandbox.evaluate(`
             async (v) => {
                 if (v instanceof Promise) return (await v) + 1;
@@ -236,7 +236,7 @@ describe('Method "evaluate" returns callable data', () => {
         expect(await result).toBe(2);
     });
 
-    it('pass Promise<ArrayBuffer> to wrapped function', async () => {
+    it('pass Promise<ArrayBuffer> to inner function', async () => {
         const fn = sandbox.evaluate(
             ` async (v) => (await v) instanceof ArrayBuffer`
         );
@@ -244,7 +244,7 @@ describe('Method "evaluate" returns callable data', () => {
         expect(await result).toBeTruthy();
     });
 
-    it('pass Promise<DataView> to wrapped function', async () => {
+    it('pass Promise<DataView> to inner function', async () => {
         const fn = sandbox.evaluate(
             ` async (v) => (await v) instanceof DataView`
         );
@@ -252,7 +252,7 @@ describe('Method "evaluate" returns callable data', () => {
         expect(await result).toBeTruthy();
     });
 
-    it('pass Promise<TypedArray> to wrapped function', async () => {
+    it('pass Promise<TypedArray> to inner function', async () => {
         const fn = sandbox.evaluate(
             ` async (v) => (await v) instanceof Uint8Array`
         );
@@ -260,7 +260,7 @@ describe('Method "evaluate" returns callable data', () => {
         expect(await result).toBeTruthy();
     });
 
-    it('pass Promise<PlainObject> to wrapped function', async () => {
+    it('pass Promise<PlainObject> to inner function', async () => {
         const fn = sandbox.evaluate(
             ` async (v) => (await v) instanceof Object`
         );
@@ -268,7 +268,7 @@ describe('Method "evaluate" returns callable data', () => {
         expect(await result).toBeTruthy();
     });
 
-    it('pass Promise<Unstructured> to wrapped function', async () => {
+    it('pass Promise<Unstructured> to inner function', async () => {
         const fn = sandbox.evaluate(`
             async (v) => {
                 try {
@@ -282,7 +282,7 @@ describe('Method "evaluate" returns callable data', () => {
         expect(result).toBeTruthy();
     });
 
-    it('pass rejected promise to wrapped function', async () => {
+    it('pass rejected promise to inner function', async () => {
         const fn = sandbox.evaluate(`
             async (v) => {
                 try {
@@ -294,5 +294,56 @@ describe('Method "evaluate" returns callable data', () => {
         `);
         const result = await fn(Promise.reject(123));
         expect(await result).toBeTruthy();
+    });
+
+    it('pass outer function to inner function', () => {
+        const inner = sandbox.evaluate(`outer => outer instanceof Function`);
+        expect(inner(() => {})).toBeTruthy();
+    });
+
+    it('outer function throws error', () => {
+        const inner = sandbox.evaluate(`
+            (outer) => {
+                try {
+                    outer();
+                } catch(e) {
+                    return e instanceof Error && e.message === 'hello'
+                }
+            }
+        `);
+        const outer = () => {
+            throw new Error('hello');
+        };
+        expect(inner(outer)).toBeTruthy();
+    });
+
+    it('outer function returns TypedArray', () => {
+        const inner = sandbox.evaluate(
+            `(outer) => outer() instanceof Uint8Array`
+        );
+        const outer = () => new Uint8Array(8);
+        expect(inner(outer)).toBeTruthy();
+    });
+
+    it('outer function returns Promise<ArrayBuffer>', async () => {
+        const inner = sandbox.evaluate(`
+            async (outer) => {
+                const result = outer();
+                return (
+                    result instanceof Promise &&
+                    (await result) instanceof ArrayBuffer
+                );
+            };
+        `);
+        const outer = () => Promise.resolve(new ArrayBuffer(8));
+        expect(await inner(outer)).toBeTruthy();
+    });
+
+    it('outer function returns function', () => {
+        const inner = sandbox.evaluate(
+            `(outer) => outer() instanceof Function`
+        );
+        const outer = () => () => {};
+        expect(inner(outer)).toBeTruthy();
     });
 });
