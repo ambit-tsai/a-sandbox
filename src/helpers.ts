@@ -11,12 +11,6 @@ export const Global: GlobalObject = window as any;
 export const define = Object.defineProperty;
 export const PRIVATE_KEY = {};
 
-/**
- * Syntax: import("module-name") => __import("module-name")
- */
-export const dynamicImportPattern = /(^|[^.$])(\bimport\s*(\(|\/[/*]))/g;
-export const dynamicImportReplacer = '$1__$2';
-
 export const apply = Global.Reflect
     ? Reflect.apply
     : function (target: Function, ctx: any, args: ArrayLike<any>) {
@@ -34,26 +28,6 @@ export function replace(
 ) {
     return apply(replaceOfString, str, args);
 }
-
-export function isObject(val: any): val is Record<PropertyKey, any> {
-    return val ? typeof val === 'object' : false;
-}
-
-// export let { assign, keys } = Object;
-// if (!assign) {
-//     assign = function (target: Record<PropertyKey, any>) {
-//         const args = arguments;
-//         for (let i = 1, { length } = args; i < length; ++i) {
-//             const source = args[i];
-//             if (isObject(source)) {
-//                 for (const key of keys(source)) {
-//                     target[key] = source[key];
-//                 }
-//             }
-//         }
-//         return target;
-//     };
-// }
 
 function instanceOf(value: any, Ctor: any) {
     return typeof Ctor === 'function' && value instanceof Ctor;
@@ -77,23 +51,35 @@ export function getWrappedValue(
     if (primitiveTypes.indexOf(type) !== -1) {
         return value;
     }
-    const tGlobal = targetRealm.intrinsics;
     if (type === 'function') {
         return createWrappedFunction(value, valueRealm, targetRealm);
     }
+    const vGlobal = valueRealm.intrinsics;
+    const tGlobal = targetRealm.intrinsics;
     if (type === 'object') {
         if (value === null) {
             return value;
         }
-        const vGlobal = valueRealm.intrinsics;
         if (vGlobal.Promise && value instanceof vGlobal.Promise) {
-            // FIXME: resolve\then is not safe
-            return tGlobal.Promise.resolve(value).then(
-                (val) => getWrappedValue(val, valueRealm, targetRealm),
-                (reason) => {
-                    throw wrapError(reason, valueRealm, targetRealm);
-                }
-            );
+            return new tGlobal.Promise((resolve, reject) => {
+                Promise.resolve(value)
+                    .then((val) => {
+                        const wrapped = getWrappedValue(
+                            val,
+                            valueRealm,
+                            targetRealm
+                        );
+                        resolve(wrapped);
+                    })
+                    .catch((reason) => {
+                        const wrapped = wrapError(
+                            reason,
+                            valueRealm,
+                            targetRealm
+                        );
+                        reject(wrapped);
+                    });
+            });
         }
         const { structuredClone } = tGlobal;
         if (structuredClone) {
@@ -111,14 +97,13 @@ export function getWrappedValue(
             }
             if (
                 instanceOf(value, vGlobal.DataView) ||
-                (vGlobal.Int8Array &&
-                    instanceOf(value, Object.getPrototypeOf(vGlobal.Int8Array)))
+                instanceOf(value, valueRealm.TypedArray)
             ) {
                 return structuredClone(value, { transfer: [value.buffer] });
             }
             return structuredClone(value);
         }
-        return tGlobal.JSON.parse(tGlobal.JSON.stringify(value));
+        return targetRealm.str2json(targetRealm.json2str(value));
     }
     console.error(value);
     throw new tGlobal.TypeError('unexpected type of value');
@@ -133,12 +118,12 @@ function createWrappedFunction(
         'cb',
         'return function(){return cb(arguments)}'
     );
-    return getWrappedFn((args: IArguments) => {
+    return getWrappedFn((args: any[]) => {
         try {
             const wrappedArgs: any[] = []; //TODO:
-            for (let i = 0, { length } = args; i < length; ++i) {
+            for (const arg of args) {
                 const wrappedValue = getWrappedValue(
-                    args[i],
+                    arg,
                     targetRealm,
                     valueRealm
                 );
@@ -245,10 +230,15 @@ export const globalReservedProps = [
     // Host API
     'atob',
     'btoa',
+    'clearInterval',
+    'clearTimeout',
     'console',
+    // 'setInterval',
+    // 'setTimeout',
     'structuredClone',
     'window',
     'Blob',
+    'DOMException',
     'File',
     'FileReader',
     'FormData',
@@ -258,6 +248,7 @@ export const globalReservedProps = [
     'TextEncoder',
     'TextEncoderStream',
     'TransformStream',
+    'URL',
     'URLSearchParams',
     'WritableStream',
 ];

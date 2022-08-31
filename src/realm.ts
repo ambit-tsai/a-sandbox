@@ -3,7 +3,7 @@ import { GlobalObject } from './helpers';
 
 const codeOfCreateRealm = '(' + createRealmInContext.toString() + ')';
 
-export function createRealm() {
+export function createRealm(): Realm {
     const iframe = document.createElement('iframe');
     document.head.appendChild(iframe);
     const realm = (iframe.contentWindow as GlobalObject).eval(
@@ -18,30 +18,33 @@ type Utils = typeof utils;
 export interface Realm {
     intrinsics: GlobalObject;
     globalObject: GlobalObject;
-    evalInContext: Function;
+    TypedArray: Int8Array;
+    str2json: typeof JSON.parse;
+    json2str: typeof JSON.stringify;
 }
 
 function createRealmInContext(utils: Utils) {
     const win = window as GlobalObject;
-    const { Error, EventTarget, Function: RawFunction, Object, Symbol } = win;
+    const {
+        EventTarget,
+        Function: RawFunction,
+        Int8Array,
+        Object,
+        SyntaxError,
+        Symbol,
+        JSON,
+    } = win;
     const { getOwnPropertyNames } = Object;
     const intrinsics = {} as GlobalObject;
     const globalObject = {} as GlobalObject;
-    const evalInContext = RawFunction('with(this)return eval(arguments[0])');
     let UNDEFINED: undefined;
-    const {
-        apply,
-        define,
-        dynamicImportPattern,
-        dynamicImportReplacer,
-        replace,
-    } = utils;
+    const { apply, define, replace } = utils;
 
-    const realm: Realm = {
-        intrinsics,
-        globalObject,
-        evalInContext,
-    };
+    /**
+     * Syntax: import("module-name") => __import("module-name")
+     */
+    const dynamicImportPattern = /(^|[^.$])(\bimport\s*(\(|\/[/*]))/g;
+    const dynamicImportReplacer = '$1__$2';
 
     if (Symbol && Symbol.unscopables) {
         // Prevent escape from the `with` context
@@ -53,14 +56,19 @@ function createRealmInContext(utils: Utils) {
     // Handle global object
     for (const key of getOwnPropertyNames(win) as any[]) {
         intrinsics[key] = win[key];
-        const isReserved = utils.globalReservedProps.indexOf(key) !== -1;
-        const descriptor = Object.getOwnPropertyDescriptor(win, key)!;
-        if (key === 'window') {
-            define(globalObject, key, {
+        let descriptor = Object.getOwnPropertyDescriptor(win, key)!;
+        if (key === 'globalThis') {
+            descriptor.value = globalObject;
+        } else if (key === 'window') {
+            descriptor = {
                 enumerable: true,
                 value: globalObject,
-            });
-        } else if (isReserved) {
+            };
+        } else if (key === 'Function') {
+            descriptor.value = createSafeFunction();
+        }
+        const isReserved = utils.globalReservedProps.indexOf(key) !== -1;
+        if (isReserved) {
             define(globalObject, key, descriptor); // copy to new global object
         }
         if (descriptor.configurable) {
@@ -80,11 +88,20 @@ function createRealmInContext(utils: Utils) {
         }
     }
 
+    define(globalObject, '__import', {
+        value() {
+            throw new SyntaxError('not support dynamic import');
+        },
+    });
     defineSafeEval();
-    globalObject.Function = createSafeFunction();
-    globalObject.globalThis = globalObject;
 
-    return realm;
+    return {
+        intrinsics,
+        globalObject,
+        TypedArray: Object.getPrototypeOf(Int8Array),
+        str2json: JSON.parse,
+        json2str: JSON.stringify,
+    };
 
     function defineSafeEval() {
         let isInnerCall = false;
@@ -105,10 +122,13 @@ function createRealmInContext(utils: Utils) {
     }
 
     function createSafeEval() {
+        const evalInContext = RawFunction(
+            'with(this)return eval(arguments[0])'
+        );
         return {
             eval(x: string) {
                 // `'use strict'` is used to enable strict mode
-                // `undefined`  is used to ensure that the return value remains unchanged
+                // `undefined` is used to ensure that the return value remains unchanged
                 x =
                     '"use strict";undefined;' +
                     replace(x, dynamicImportPattern, dynamicImportReplacer);
@@ -131,7 +151,7 @@ function createRealmInContext(utils: Utils) {
                 '}()';
             const wrapFn = RawFunction(fnStr);
             const safeFn: Function = apply(wrapFn, globalObject, []);
-            return function (this: any) {
+            return function (this: unknown) {
                 const ctx = this === win ? UNDEFINED : this;
                 return apply(safeFn, ctx, arguments);
             };
