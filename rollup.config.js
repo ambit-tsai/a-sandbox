@@ -28,12 +28,14 @@ export default {
             banner,
         },
     ],
-    external: ['tslib', 'lodash-es'],
+    external: ['tslib'],
     plugins: [
         clear({
             targets: ['dist'],
         }),
         typescript(),
-        terser(),
+        terser({
+            keep_fnames: /^Function$/,
+        }),
     ],
 };

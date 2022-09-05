@@ -180,6 +180,13 @@ describe('Method "evaluate" returns callable data', () => {
         throw 'never';
     });
 
+    it('arguments of inner function', () => {
+        const result = sandbox.evaluate(
+            '(function(){return arguments instanceof Object})'
+        )(1, 2);
+        expect(result).toBeTruthy();
+    });
+
     it('pass primitive data to inner function', () => {
         const check = sandbox.evaluate(`(v, type) => typeof v === type`);
         expect(check(1, 'number')).toBeTruthy();

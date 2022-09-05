@@ -1,11 +1,5 @@
 import { createRealm, Realm } from './realm';
-import {
-    define,
-    getWrappedValue,
-    Global,
-    PRIVATE_KEY,
-    wrapError,
-} from './helpers';
+import { define, getWrappedValue, Global, wrapError } from './helpers';
 
 interface Private {
     innerRealm: Realm;
@@ -13,9 +7,11 @@ interface Private {
     options: { onInit: (realm: Realm) => void };
 }
 
+const PRIVATE_KEY = {};
+
 export default class Sandbox {
     // @ts-ignore
-    _getPrivate: (key: unknown) => Private;
+    private _getPrivate: (key: unknown) => Private;
 
     constructor(options = {} as Private['options']) {
         const innerRealm = createRealm();
@@ -34,12 +30,14 @@ export default class Sandbox {
                 if (key === PRIVATE_KEY) return $private;
             },
         });
-        options.onInit?.(innerRealm);
+        if (options.onInit) {
+            options.onInit(innerRealm);
+        }
     }
 
     /**
      * Eval code in sandbox.
-     * @return primitive, callable or structured data
+     * @return callable, structured or promise data
      */
     evaluate(sourceText: string): any {
         if (typeof sourceText !== 'string') {

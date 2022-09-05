@@ -7,7 +7,9 @@
         "importHelpers": true,
         "lib": ["ESNext", "ScriptHost", "DOM"],
         "skipLibCheck": true,
-        "sourceMap": true
+        "sourceMap": true,
+        "declaration": true,
+        "declarationDir": "./dist"
     },
     "include": ["src/**/*"]
 }

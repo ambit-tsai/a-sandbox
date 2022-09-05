@@ -30,6 +30,9 @@ function createRealmInContext(utils: Utils) {
         Function: RawFunction,
         Int8Array,
         Object,
+        String: {
+            prototype: { replace },
+        },
         SyntaxError,
         Symbol,
         JSON,
@@ -38,7 +41,7 @@ function createRealmInContext(utils: Utils) {
     const intrinsics = {} as GlobalObject;
     const globalObject = {} as GlobalObject;
     let UNDEFINED: undefined;
-    const { apply, define, replace } = utils;
+    const { apply, define } = utils;
 
     /**
      * Syntax: import("module-name") => __import("module-name")
@@ -116,7 +119,7 @@ function createRealmInContext(utils: Utils) {
                 return safeEval;
             },
             set(val) {
-                isInnerCall = val === utils.PRIVATE_KEY;
+                isInnerCall = val === intrinsics;
             },
         });
     }
@@ -129,11 +132,12 @@ function createRealmInContext(utils: Utils) {
             eval(x: string) {
                 // `'use strict'` is used to enable strict mode
                 // `undefined` is used to ensure that the return value remains unchanged
-                x =
-                    '"use strict";undefined;' +
-                    replace(x, dynamicImportPattern, dynamicImportReplacer);
-                // @ts-ignore: to use raw `eval`
-                globalObject.eval = utils.PRIVATE_KEY;
+                x = apply(replace, '"use strict";undefined;' + x, [
+                    dynamicImportPattern,
+                    dynamicImportReplacer,
+                ]);
+                // @ts-ignore: `intrinsics` is the key to use raw `eval`
+                globalObject.eval = intrinsics;
                 return apply(evalInContext, globalObject, [x]);
             },
         }.eval; // fix TS1215: Invalid use of 'eval'
@@ -144,7 +148,10 @@ function createRealmInContext(utils: Utils) {
         const Ctor = function Function() {
             const rawFn = apply(RawFunction, UNDEFINED, arguments);
             let fnStr = apply(toString, rawFn, []);
-            fnStr = replace(fnStr, dynamicImportPattern, dynamicImportReplacer);
+            fnStr = apply(replace, fnStr, [
+                dynamicImportPattern,
+                dynamicImportReplacer,
+            ]);
             fnStr =
                 'with(this)return function(){"use strict";return ' +
                 fnStr +
