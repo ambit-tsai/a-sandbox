@@ -94,11 +94,15 @@ function createRealmInContext(utils: Utils) {
         const isReserved = utils.globalReservedProps.indexOf(key) !== -1;
         const descriptor = Object.getOwnPropertyDescriptor(win, key)!;
         if (isReserved) {
-            define(
-                globalObject,
-                key,
-                replaceMap[key] ? replaceMap[key]() : descriptor
-            ); // copy to new global object
+            let desc = descriptor;
+            if (replaceMap[key]) {
+                desc = replaceMap[key]();
+            } else if (desc.get) {
+                desc.value = win[key];
+                delete desc.get;
+                delete desc.set;
+            }
+            define(globalObject, key, desc); // copy to new global object
         }
         if (descriptor.configurable) {
             delete win[key];
