@@ -9,7 +9,7 @@ export function createRealm(): Realm {
     const realm = (iframe.contentWindow as GlobalObject).eval(
         codeOfCreateRealm
     )(utils);
-    document.head.removeChild(iframe);
+    // document.head.removeChild(iframe);
     return realm;
 }
 
@@ -38,16 +38,48 @@ function createRealmInContext(utils: Utils) {
         JSON,
     } = win;
     const { getOwnPropertyNames } = Object;
+    const { apply, define } = utils;
     const intrinsics = {} as GlobalObject;
     const globalObject = {} as GlobalObject;
+    const TRUE = true;
     let UNDEFINED: undefined;
-    const { apply, define } = utils;
 
     /**
      * Syntax: import("module-name") => __import("module-name")
      */
     const dynamicImportPattern = /(^|[^.$])(\bimport\s*(\(|\/[/*]))/g;
     const dynamicImportReplacer = '$1__$2';
+
+    const replaceMap: Record<string, Function> = {
+        globalThis: () => ({
+            configurable: TRUE,
+            writable: TRUE,
+            value: globalObject,
+        }),
+        window: () => ({
+            enumerable: TRUE,
+            value: globalObject,
+        }),
+        Function: getSafeFunction,
+        clearInterval: () => ({
+            configurable: TRUE,
+            enumerable: TRUE,
+            writable: TRUE,
+            value(id: number) {
+                apply(intrinsics.clearInterval, UNDEFINED, [id]);
+            },
+        }),
+        clearTimeout: () => ({
+            configurable: TRUE,
+            enumerable: TRUE,
+            writable: TRUE,
+            value(id: number) {
+                apply(intrinsics.clearTimeout, UNDEFINED, [id]);
+            },
+        }),
+        setInterval: getDelayFunc('setInterval'),
+        setTimeout: getDelayFunc('setTimeout'),
+    };
 
     if (Symbol && Symbol.unscopables) {
         // Prevent escape from the `with` context
@@ -59,20 +91,14 @@ function createRealmInContext(utils: Utils) {
     // Handle global object
     for (const key of getOwnPropertyNames(win) as any[]) {
         intrinsics[key] = win[key];
-        let descriptor = Object.getOwnPropertyDescriptor(win, key)!;
-        if (key === 'globalThis') {
-            descriptor.value = globalObject;
-        } else if (key === 'window') {
-            descriptor = {
-                enumerable: true,
-                value: globalObject,
-            };
-        } else if (key === 'Function') {
-            descriptor.value = createSafeFunction();
-        }
         const isReserved = utils.globalReservedProps.indexOf(key) !== -1;
+        const descriptor = Object.getOwnPropertyDescriptor(win, key)!;
         if (isReserved) {
-            define(globalObject, key, descriptor); // copy to new global object
+            define(
+                globalObject,
+                key,
+                replaceMap[key] ? replaceMap[key]() : descriptor
+            ); // copy to new global object
         }
         if (descriptor.configurable) {
             delete win[key];
@@ -143,7 +169,7 @@ function createRealmInContext(utils: Utils) {
         }.eval; // fix TS1215: Invalid use of 'eval'
     }
 
-    function createSafeFunction(): FunctionConstructor {
+    function getSafeFunction() {
         const { toString } = RawFunction;
         const Ctor = function Function() {
             const rawFn = apply(RawFunction, UNDEFINED, arguments);
@@ -165,6 +191,31 @@ function createRealmInContext(utils: Utils) {
         };
         Ctor.prototype = RawFunction.prototype;
         Ctor.prototype.constructor = Ctor;
-        return Ctor as any;
+        return {
+            configurable: TRUE,
+            writable: TRUE,
+            value: Ctor,
+        };
+    }
+
+    function getDelayFunc(fnName: 'setInterval' | 'setTimeout') {
+        return () => ({
+            configurable: TRUE,
+            enumerable: TRUE,
+            writable: TRUE,
+            value(fnOrStr: Function | string) {
+                const args = arguments;
+                if (typeof fnOrStr === 'function') {
+                    const fn = fnOrStr;
+                    args[0] = function () {
+                        apply(fn, globalObject, arguments);
+                    };
+                } else if (typeof fnOrStr === 'string') {
+                    const str = fnOrStr;
+                    args[0] = () => globalObject.eval(str);
+                }
+                return apply(intrinsics[fnName], UNDEFINED, args);
+            },
+        });
     }
 }

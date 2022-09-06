@@ -6,7 +6,7 @@
     },
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.detectIndentation": false,
-    "editor.experimental.stickyScroll.enabled": true,
+    "editor.stickyScroll.enabled": true,
     "editor.guides.bracketPairs": true,
     "editor.linkedEditing": true,
     "editor.tabSize": 4,
