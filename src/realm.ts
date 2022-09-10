@@ -9,13 +9,14 @@ export function createRealm(): Realm {
     const realm = (iframe.contentWindow as GlobalObject).eval(
         codeOfCreateRealm
     )(utils);
-    // document.head.removeChild(iframe);
+    realm.iframe = iframe;
     return realm;
 }
 
 type Utils = typeof utils;
 
 export interface Realm {
+    iframe: HTMLIFrameElement;
     intrinsics: GlobalObject;
     globalObject: GlobalObject;
     TypedArray: Int8Array;
