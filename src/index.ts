@@ -1,6 +1,8 @@
 import { createRealm, Realm } from './realm';
 import { define, getWrappedValue, Global, wrapError } from './helpers';
 
+export { Realm };
+
 interface Private {
     innerRealm: Realm;
     outerRealm: Realm;
@@ -36,7 +38,7 @@ export default class Sandbox {
     }
 
     /**
-     * Eval code in sandbox.
+     * Eval code string in sandbox
      * @return callable, structured or promise data
      */
     evaluate(sourceText: string): any {
@@ -53,7 +55,8 @@ export default class Sandbox {
     }
 
     /**
-     * Run function within sandbox
+     * Run function in sandbox
+     * @return the same as `evaluate`
      */
     evaluateHandle(func: (this: undefined) => any): any {
         if (typeof func !== 'function') {
