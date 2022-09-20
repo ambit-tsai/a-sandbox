@@ -1,35 +1,46 @@
 {
     "name": "a-sandbox",
-    "version": "0.0.0-alpha.1",
-    "description": "sandbox for browser",
+    "version": "0.0.0-alpha.2",
+    "description": "a secure, synchronous, well-compatible browser sandbox with customization support",
     "license": "MulanPSL-2.0",
     "author": {
         "name": "Ambit Tsai",
         "email": "ambit_tsai@qq.com"
     },
     "main": "dist/index.js",
+    "module": "dist/index.mjs",
     "scripts": {
-        "build": "rollup -c"
+        "build": "rollup -c",
+        "build:docs": "vite build -c docs-src/vite.config.ts",
+        "start": "vite -c docs-src/vite.config.ts",
+        "test": "jasmine-browser-runner serve --config=jasmine-browser.json"
     },
     "repository": {
         "type": "git",
         "url": "https://github.com/ambit_tsai/a-sandbox.git"
     },
     "files": [
-        "dist",
-        "package.json"
+        "dist"
     ],
     "devDependencies": {
         "@rollup/plugin-typescript": "^8.3.4",
         "@types/node": "^18.6.3",
+        "jasmine-browser-runner": "^1.1.0",
+        "jasmine-core": "^4.3.0",
         "rollup": "~2.70.2",
         "rollup-plugin-clear": "2.0.7",
         "rollup-plugin-terser": "^7.0.2",
-        "typescript": "^4.7.4"
+        "typescript": "^4.7.4",
+        "vite": "^3.0.7"
     },
     "keywords": [
         "browser",
+        "js-sandbox",
+        "jssandbox",
+        "sandbox",
+        "shadowrealm",
         "web",
-        "sandbox"
+        "web-sandbox",
+        "websandbox"
     ]
 }

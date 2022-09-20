@@ -13,18 +13,29 @@ const banner = `
 
 export default {
     input: 'src/index.ts',
-    output: {
-        dir: 'dist',
-        format: 'esm',
-        sourcemap: true,
-        banner,
-    },
-    external: ['tslib', 'lodash-es'],
+    output: [
+        {
+            file: 'dist/index.mjs',
+            format: 'esm',
+            sourcemap: true,
+            banner,
+        },
+        {
+            dir: 'dist',
+            format: 'umd',
+            name: 'Sandbox',
+            sourcemap: true,
+            banner,
+        },
+    ],
+    external: ['tslib'],
     plugins: [
         clear({
             targets: ['dist'],
         }),
         typescript(),
-        terser(),
+        terser({
+            keep_fnames: /^Function$/,
+        }),
     ],
 };

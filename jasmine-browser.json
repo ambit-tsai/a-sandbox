@@ -1,0 +1,6 @@
+{
+    "srcDir": "dist",
+    "srcFiles": ["index.js"],
+    "specDir": "test",
+    "specFiles": ["**/*.mjs"]
+}
