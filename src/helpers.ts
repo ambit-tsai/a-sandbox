@@ -230,6 +230,7 @@ export const globalReservedProps = [
     'window',
     'Blob',
     'File',
+    'FileList',
     'FileReader',
     'Crypto',
     'crypto',
