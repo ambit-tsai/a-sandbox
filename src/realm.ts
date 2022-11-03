@@ -5,6 +5,7 @@ const codeOfCreateRealm = '(' + createRealmInContext.toString() + ')';
 
 export function createRealm(): Realm {
     const iframe = document.createElement('iframe');
+    iframe.name = 'Sandbox';
     document.head.appendChild(iframe);
     const realm = (iframe.contentWindow as GlobalObject).eval(
         codeOfCreateRealm
